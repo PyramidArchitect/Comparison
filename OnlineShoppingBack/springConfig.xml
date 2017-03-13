@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:cache="http://www.springframework.org/schema/cache"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+	xmlns:p="http://www.springframework.org/schema/p"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:util="http://www.springframework.org/schema/util"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.3.xsd
+		http://www.springframework.org/schema/cache http://www.springframework.org/schema/cache/spring-cache-4.3.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.3.xsd
+		http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc-4.3.xsd
+		http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.3.xsd
+		http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util-4.3.xsd">
+
+<!-- 数据源 -->
+	<bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource">
+		<property name="driverClass" value="${jdbc.driver}" />
+		<property name="jdbcUrl" value="${jdbc.url}" />
+		<property name="user" value="${jdbc.username}" />
+		<property name="password" value="${jdbc.password}" />
+		<property name="initialPoolSize" value="${jdbc.initPoolSize}" />
+		<property name="maxPoolSize" value="${jdbc.maxPoolSize}" />
+	</bean>
+	
+	<bean id="sessionFactory" class="org.springframework.orm.hibernate4.LocalSessionFactoryBean">
+	<!-- 配置数据源属性 -->
+		<property name="dataSource"  ref="dataSource"></property>
+		<!--配置hibernate配置文件的位置及名称  -->
+		<property name="configLocation"  value="classpath:hibernate.cfg.xml"></property>
+		<!-- 配置hibernate映射文件的位置及名称，可以使用通配符 -->
+		<property name="packagesToScan" value="model" />
+		<!-- <property name="mappingLocations" value="classpath:com/atguigu/spring/hibernate/entities/*.hbm.xml"></property> -->
+	</bean>
+	
+	<!--  配置Spring的声明式事务-->
+	<!--  配置事务管理器-->
+	<bean id="transactionManager" class="org.springframework.orm.hibernate4.HibernateTransactionManager">
+		<property name="sessionFactory"  ref="sessionFactory"></property>
+	</bean>
+	
+	<bean
+		class="org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor" />
+	<context:property-placeholder location="classpath:jdbc.properties" />
+	<context:component-scan base-package="application"/>
+    <context:component-scan base-package="runtime" />
+    
+    
+	<!--  启用事务注解-->
+	<tx:annotation-driven transaction-manager="transactionManager"/>
+	<tx:advice id="txAdvice" transaction-manager="transactionManager">
+		<tx:attributes>
+			<tx:method name="*User" propagation="REQUIRED" />
+			<tx:method name="*" propagation="NOT_SUPPORTED" read-only="true" />
+		</tx:attributes>
+	</tx:advice>
+	<!-- 
+	定义切面，在edu.nju.onlinestock.service包及子包中所有以Service结尾的方法中,执行有关的hibernate session的事务操作
+	 -->
+	<aop:config>
+		<!-- 只对业务逻辑层实施事务 -->
+		<aop:pointcut id="serviceOperation"
+			expression="execution( * service..*Service.*(..))" />
+		<aop:advisor advice-ref="txAdvice" pointcut-ref="serviceOperation" />
+	</aop:config>   
+
+</beans>
